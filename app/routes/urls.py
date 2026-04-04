@@ -112,6 +112,15 @@ def list_urls():
     return jsonify([url_to_api_dict(u) for u in query])
 
 
+@urls_bp.route("/urls/<int:url_id>", methods=["GET"])
+def get_url(url_id: int):
+    try:
+        url = Url.get_by_id(url_id)
+    except Url.DoesNotExist:
+        return jsonify(error="url not found"), 404
+    return jsonify(url_to_api_dict(url))
+
+
 @urls_bp.route("/urls", methods=["POST"])
 def create_url():
     body = request.get_json(silent=True)
