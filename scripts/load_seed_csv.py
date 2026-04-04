@@ -17,6 +17,7 @@ if str(_ROOT) not in sys.path:
 from app import create_app
 from app.database import db
 from app.models import Event, Url, User
+from app.services.user_csv import parse_users_csv_text_stream
 
 _DATA_DIR = _ROOT / "data"
 _DT_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -28,18 +29,8 @@ def _parse_dt(value: str) -> datetime:
 
 
 def _read_users(path: Path) -> list[dict]:
-    rows: list[dict] = []
     with path.open(newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            rows.append(
-                {
-                    "id": int(row["id"]),
-                    "username": row["username"],
-                    "email": row["email"],
-                    "created_at": _parse_dt(row["created_at"]),
-                }
-            )
-    return rows
+        return parse_users_csv_text_stream(f)
 
 
 def _read_urls(path: Path) -> list[dict]:
