@@ -13,6 +13,9 @@ from app.models import Url, User
 
 urls_bp = Blueprint("urls", __name__)
 
+_MAX_PER_PAGE = 100
+_DEFAULT_PER_PAGE = 20
+
 _SHORT_CODE_LEN = 6
 _SHORT_CODE_ALPHABET = string.ascii_letters + string.digits
 _MAX_SHORT_CODE_ATTEMPTS = 24
@@ -38,6 +41,75 @@ def _generate_short_code() -> str:
 def _is_http_url(value: str) -> bool:
     parsed = urlparse(value.strip())
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def _parse_page_int(raw: str | None, name: str, default: int) -> int:
+    if raw is None or raw == "":
+        return default
+    try:
+        n = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer") from exc
+    if n < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return n
+
+
+def _parse_query_user_id() -> tuple[int | None, tuple | None]:
+    """Return (user_id, error_response) where error_response is (json, status) if invalid."""
+    raw = request.args.get("user_id")
+    if raw is None:
+        return None, None
+    if raw == "":
+        return None, (jsonify(error="user_id must be an integer"), 400)
+    try:
+        uid = int(raw)
+    except ValueError:
+        return None, (jsonify(error="user_id must be an integer"), 400)
+    if uid < 1:
+        return None, (jsonify(error="user_id must be a positive integer"), 400)
+    return uid, None
+
+
+@urls_bp.route("/urls", methods=["GET"])
+def list_urls():
+    filter_user_id, err = _parse_query_user_id()
+    if err is not None:
+        body, status = err
+        return body, status
+
+    query = Url.select().order_by(Url.id)
+    if filter_user_id is not None:
+        query = query.where(Url.user_id == filter_user_id)
+
+    args = request.args
+    if "page" in args or "per_page" in args:
+        try:
+            page = _parse_page_int(args.get("page"), "page", 1)
+            per_page = _parse_page_int(
+                args.get("per_page"), "per_page", _DEFAULT_PER_PAGE
+            )
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+        per_page = min(per_page, _MAX_PER_PAGE)
+        total = int(query.count())
+        total_pages = (total + per_page - 1) // per_page if total else 0
+        offset = (page - 1) * per_page
+        rows = query.offset(offset).limit(per_page)
+        payload = [url_to_api_dict(u) for u in rows]
+        has_next = total_pages > 0 and page < total_pages
+        has_prev = page > 1
+        return jsonify(
+            urls=payload,
+            page=page,
+            per_page=per_page,
+            total=total,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
+        )
+
+    return jsonify([url_to_api_dict(u) for u in query])
 
 
 @urls_bp.route("/urls", methods=["POST"])
