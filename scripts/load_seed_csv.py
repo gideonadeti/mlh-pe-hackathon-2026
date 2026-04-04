@@ -1,4 +1,4 @@
-"""Load users.csv, urls.csv, and events.csv into Postgres. Run: uv run python scripts/load_seed_csv.py"""
+"""Load data/*.csv seed files into Postgres. Run: uv run python scripts/load_seed_csv.py"""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from app import create_app
 from app.database import db
 from app.models import Event, Url, User
 
+_DATA_DIR = _ROOT / "data"
 _DT_FORMAT = "%Y-%m-%d %H:%M:%S"
 _BATCH = 200
 
@@ -92,9 +93,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    users_path = _ROOT / "users.csv"
-    urls_path = _ROOT / "urls.csv"
-    events_path = _ROOT / "events.csv"
+    users_path = _DATA_DIR / "users.csv"
+    urls_path = _DATA_DIR / "urls.csv"
+    events_path = _DATA_DIR / "events.csv"
     for p in (users_path, urls_path, events_path):
         if not p.is_file():
             raise SystemExit(f"Missing CSV: {p}")
