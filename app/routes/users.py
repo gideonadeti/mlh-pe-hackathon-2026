@@ -125,13 +125,58 @@ def create_user():
     return jsonify(user_to_api_dict(user)), 201
 
 
-@users_bp.route("/users/<int:user_id>", methods=["GET"])
-def get_user(user_id: int):
+@users_bp.route("/users/<int:user_id>", methods=["GET", "PUT"])
+def user_detail(user_id: int):
+    if request.method == "GET":
+        try:
+            user = User.get_by_id(user_id)
+        except User.DoesNotExist:
+            return jsonify(error="user not found"), 404
+        return jsonify(user_to_api_dict(user))
+
+    body = request.get_json(silent=True)
+    if body is None or not isinstance(body, dict):
+        return jsonify(error="JSON object required"), 400
+
+    if "username" not in body and "email" not in body:
+        return jsonify(error="provide at least one of: username, email"), 400
+
+    errors: dict[str, list[str]] = {}
+    if "username" in body:
+        v = body["username"]
+        if not isinstance(v, str):
+            errors["username"] = ["must be a string"]
+        elif not v.strip():
+            errors["username"] = ["must not be empty"]
+    if "email" in body:
+        v = body["email"]
+        if not isinstance(v, str):
+            errors["email"] = ["must be a string"]
+        elif not v.strip():
+            errors["email"] = ["must not be empty"]
+
+    if errors:
+        return jsonify(error="validation failed", fields=errors), 400
+
     try:
         user = User.get_by_id(user_id)
     except User.DoesNotExist:
         return jsonify(error="user not found"), 404
-    return jsonify(user_to_api_dict(user))
+
+    if "username" in body:
+        user.username = body["username"].strip()
+    if "email" in body:
+        user.email = body["email"].strip()
+
+    try:
+        user.save()
+    except IntegrityError:
+        current_app.logger.warning(
+            "update user integrity error (likely duplicate email)"
+        )
+        return jsonify(error="email already exists"), 409
+
+    return jsonify(user_to_api_dict(user)), 200
 
 
 @users_bp.route("/users/bulk", methods=["POST"])
