@@ -54,14 +54,20 @@ def list_users():
             return jsonify(error=str(exc)), 400
         per_page = min(per_page, _MAX_PER_PAGE)
         total = int(base.count())
+        total_pages = (total + per_page - 1) // per_page if total else 0
         offset = (page - 1) * per_page
         rows = base.offset(offset).limit(per_page)
         payload = [user_to_api_dict(u) for u in rows]
+        has_next = total_pages > 0 and page < total_pages
+        has_prev = page > 1
         return jsonify(
             users=payload,
             page=page,
             per_page=per_page,
             total=total,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
         )
 
     payload = [user_to_api_dict(u) for u in base]
