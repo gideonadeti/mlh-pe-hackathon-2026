@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from flask import Blueprint, current_app, jsonify, request
-from peewee import IntegrityError, chunked
+from peewee import IntegrityError, chunked, fn
 
 from app.database import db
 from app.models import User
@@ -72,6 +74,55 @@ def list_users():
 
     payload = [user_to_api_dict(u) for u in base]
     return jsonify(payload)
+
+
+@users_bp.route("/users", methods=["POST"])
+def create_user():
+    body = request.get_json(silent=True)
+    if body is None or not isinstance(body, dict):
+        return jsonify(error="JSON object required"), 400
+
+    errors: dict[str, list[str]] = {}
+    raw_username = body.get("username")
+    raw_email = body.get("email")
+
+    if raw_username is None:
+        errors["username"] = ["required"]
+    elif not isinstance(raw_username, str):
+        errors["username"] = ["must be a string"]
+    elif not raw_username.strip():
+        errors["username"] = ["must not be empty"]
+
+    if raw_email is None:
+        errors["email"] = ["required"]
+    elif not isinstance(raw_email, str):
+        errors["email"] = ["must be a string"]
+    elif not raw_email.strip():
+        errors["email"] = ["must not be empty"]
+
+    if errors:
+        return jsonify(error="validation failed", fields=errors), 400
+
+    username = raw_username.strip()
+    email = raw_email.strip()
+
+    try:
+        with db.atomic():
+            max_id = User.select(fn.MAX(User.id)).scalar()
+            next_id = (max_id or 0) + 1
+            user = User.create(
+                id=next_id,
+                username=username,
+                email=email,
+                created_at=datetime.now(),
+            )
+    except IntegrityError:
+        current_app.logger.warning(
+            "create user integrity error (likely duplicate email)"
+        )
+        return jsonify(error="email already exists"), 409
+
+    return jsonify(user_to_api_dict(user)), 201
 
 
 @users_bp.route("/users/<int:user_id>", methods=["GET"])
