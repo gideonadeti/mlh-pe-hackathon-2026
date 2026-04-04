@@ -11,13 +11,22 @@ from app import create_app
 from app.database import db
 from app.models import Event, Url, User
 
+# Serialize DDL when several app containers start at once (e.g. Docker Compose).
+# Concurrent CREATE TABLE IF NOT EXISTS can race on PostgreSQL catalog rows.
+_DDL_LOCK_K1 = 0x4D4C4850
+_DDL_LOCK_K2 = 0x43544142
+
 
 def main() -> None:
     app = create_app()
     with app.app_context():
         db.connect(reuse_if_open=True)
         try:
-            db.create_tables([User, Url, Event], safe=True)
+            db.execute_sql("SELECT pg_advisory_lock(%s, %s)", (_DDL_LOCK_K1, _DDL_LOCK_K2))
+            try:
+                db.create_tables([User, Url, Event], safe=True)
+            finally:
+                db.execute_sql("SELECT pg_advisory_unlock(%s, %s)", (_DDL_LOCK_K1, _DDL_LOCK_K2))
         finally:
             if not db.is_closed():
                 db.close()
