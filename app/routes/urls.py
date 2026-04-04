@@ -112,13 +112,51 @@ def list_urls():
     return jsonify([url_to_api_dict(u) for u in query])
 
 
-@urls_bp.route("/urls/<int:url_id>", methods=["GET"])
-def get_url(url_id: int):
+@urls_bp.route("/urls/<int:url_id>", methods=["GET", "PUT"])
+def url_detail(url_id: int):
+    if request.method == "GET":
+        try:
+            url = Url.get_by_id(url_id)
+        except Url.DoesNotExist:
+            return jsonify(error="url not found"), 404
+        return jsonify(url_to_api_dict(url))
+
+    body = request.get_json(silent=True)
+    if body is None or not isinstance(body, dict):
+        return jsonify(error="JSON object required"), 400
+
+    if "title" not in body and "is_active" not in body:
+        return jsonify(error="provide at least one of: title, is_active"), 400
+
+    errors: dict[str, list[str]] = {}
+    if "title" in body:
+        v = body["title"]
+        if not isinstance(v, str):
+            errors["title"] = ["must be a string"]
+        elif not v.strip():
+            errors["title"] = ["must not be empty"]
+    if "is_active" in body:
+        v = body["is_active"]
+        if not isinstance(v, bool):
+            errors["is_active"] = ["must be a boolean"]
+
+    if errors:
+        return jsonify(error="validation failed", fields=errors), 400
+
     try:
         url = Url.get_by_id(url_id)
     except Url.DoesNotExist:
         return jsonify(error="url not found"), 404
-    return jsonify(url_to_api_dict(url))
+
+    if "title" in body:
+        url.title = body["title"].strip()
+    if "is_active" in body:
+        url.is_active = body["is_active"]
+
+    url.updated_at = datetime.now()
+    url.save()
+
+    return jsonify(url_to_api_dict(url)), 200
 
 
 @urls_bp.route("/urls", methods=["POST"])
