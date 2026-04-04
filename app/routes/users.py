@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from peewee import IntegrityError, chunked
 
 from app.database import db
@@ -46,6 +46,12 @@ def bulk_import_users():
             for batch in chunked(rows, _INSERT_BATCH):
                 User.insert_many(batch).execute()
     except IntegrityError as exc:
-        return jsonify(error="database constraint violation", detail=str(exc)), 409
+        current_app.logger.warning("users/bulk integrity error: %s", exc)
+        return (
+            jsonify(
+                error="Import conflicts with existing data (duplicate id, email, or other database constraint).",
+            ),
+            409,
+        )
 
     return jsonify(imported=len(rows)), 201
