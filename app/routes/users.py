@@ -5,12 +5,26 @@ from peewee import IntegrityError, chunked
 
 from app.database import db
 from app.models import User
-from app.services.user_csv import parse_users_csv_binary_stream
+from app.services.user_csv import parse_users_csv_binary_stream, user_to_api_dict
 
 users_bp = Blueprint("users", __name__)
 
 _BULK_FILE_KEYS = ("file", "users", "users_csv", "upload")
 _INSERT_BATCH = 200
+_MAX_PER_PAGE = 100
+_DEFAULT_PER_PAGE = 20
+
+
+def _parse_page_int(raw: str | None, name: str, default: int) -> int:
+    if raw is None or raw == "":
+        return default
+    try:
+        n = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer") from exc
+    if n < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return n
 
 
 def _first_uploaded_file():
@@ -24,6 +38,34 @@ def _first_uploaded_file():
         if storage and storage.filename:
             return storage
     return None
+
+
+@users_bp.route("/users", methods=["GET"])
+def list_users():
+    base = User.select().order_by(User.id)
+    args = request.args
+    if "page" in args or "per_page" in args:
+        try:
+            page = _parse_page_int(args.get("page"), "page", 1)
+            per_page = _parse_page_int(
+                args.get("per_page"), "per_page", _DEFAULT_PER_PAGE
+            )
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+        per_page = min(per_page, _MAX_PER_PAGE)
+        total = int(base.count())
+        offset = (page - 1) * per_page
+        rows = base.offset(offset).limit(per_page)
+        payload = [user_to_api_dict(u) for u in rows]
+        return jsonify(
+            users=payload,
+            page=page,
+            per_page=per_page,
+            total=total,
+        )
+
+    payload = [user_to_api_dict(u) for u in base]
+    return jsonify(payload)
 
 
 @users_bp.route("/users/bulk", methods=["POST"])
