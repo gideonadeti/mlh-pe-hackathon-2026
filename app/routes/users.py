@@ -74,6 +74,15 @@ def list_users():
     return jsonify(payload)
 
 
+@users_bp.route("/users/<int:user_id>", methods=["GET"])
+def get_user(user_id: int):
+    try:
+        user = User.get_by_id(user_id)
+    except User.DoesNotExist:
+        return jsonify(error="user not found"), 404
+    return jsonify(user_to_api_dict(user))
+
+
 @users_bp.route("/users/bulk", methods=["POST"])
 def bulk_import_users():
     upload = _first_uploaded_file()
