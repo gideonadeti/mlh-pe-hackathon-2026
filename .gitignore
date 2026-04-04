@@ -34,3 +34,6 @@ Thumbs.db
 judging/
 
 .cursor/
+
+# Seed CSVs — add locally (e.g. from MLH platform)
+data/*.csv
