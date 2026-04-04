@@ -13,8 +13,8 @@ build/
 # Environment variables
 .env
 
-# uv
-uv.lock
+# Docker Compose secrets
+secrets/postgres_password.txt
 
 # IDE
 .vscode/
