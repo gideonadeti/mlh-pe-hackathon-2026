@@ -10,6 +10,7 @@ from peewee import IntegrityError, fn
 
 from app.database import db
 from app.models import Url, User
+from app.redirect_cache import invalidate_redirect
 
 urls_bp = Blueprint("urls", __name__)
 
@@ -155,6 +156,7 @@ def url_detail(url_id: int):
 
     url.updated_at = datetime.now()
     url.save()
+    invalidate_redirect(url.short_code)
 
     return jsonify(url_to_api_dict(url)), 200
 
