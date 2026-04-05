@@ -13,8 +13,8 @@ build/
 # Environment variables
 .env
 
-# uv
-uv.lock
+# Docker Compose secrets
+secrets/postgres_password.txt
 
 # IDE
 .vscode/
@@ -32,3 +32,8 @@ Thumbs.db
 
 # Judging (not visible to participants)
 judging/
+
+.cursor/
+
+# Seed CSVs — add locally (e.g. from MLH platform)
+data/*.csv

@@ -1,3 +1,6 @@
-# Import your models here so Peewee registers them.
-# Example:
-#   from app.models.product import Product
+# Import models so Peewee registers them and FKs resolve.
+from app.models.event import Event
+from app.models.url import Url
+from app.models.user import User
+
+__all__ = ["Event", "Url", "User"]
