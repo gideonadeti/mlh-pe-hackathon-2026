@@ -13,8 +13,8 @@ def get_redirect_target(short_code: str) -> str | None:
     return cache.get(redirect_cache_key(short_code))
 
 
-def set_redirect_target(short_code: str, original_url: str) -> None:
-    cache.set(redirect_cache_key(short_code), original_url)
+def set_redirect_target(short_code: str, original_url: str, timeout: int | None = None) -> None:
+    cache.set(redirect_cache_key(short_code), original_url, timeout=timeout)
 
 
 def invalidate_redirect(short_code: str) -> None:
