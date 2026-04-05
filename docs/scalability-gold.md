@@ -121,3 +121,22 @@ k6 run quest-log/scalability-gold.js
 | Response time — average (`http_req_duration` avg) | ~5418 ms (~5.42 s) |
 | Response time — p95 (`http_req_duration`) | ~6202 ms (~6.20 s) |
 | Error rate (`http_req_failed`) | 0% |
+
+### Fourth Gold k6 run
+
+Same k6 command as the second and third runs. **Gunicorn** **`--workers`** increased from **4** to **8** in `docker/entrypoint.sh` (rebuild Compose before running).
+
+```bash
+K6_SEEDED_FRACTION=1 \
+K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
+k6 run quest-log/scalability-gold.js
+```
+
+![k6 terminal — Scalability Gold fourth run](../quest-log/screenshots/scalability-gold-4.png)
+
+| | |
+|--|--|
+| Peak VUs (`vus_max`) | 500 |
+| Response time — average (`http_req_duration` avg) | ~5293 ms (~5.29 s) |
+| Response time — p95 (`http_req_duration`) | ~6200 ms (~6.20 s) |
+| Error rate (`http_req_failed`) | 0% |
