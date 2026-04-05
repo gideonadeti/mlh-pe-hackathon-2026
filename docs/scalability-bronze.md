@@ -28,7 +28,13 @@ k6 run quest-log/scalability-bronze.js
 
 **Why `K6_SHORT_CODES`?** You can omit it: every request uses a random 6-character code, so most responses are **404** — that still load-tests `GET /<short_code>` and the DB lookup. Setting `K6_SHORT_CODES` adds **real codes from your database** (e.g. from MLH seed `urls.csv`) so part of the traffic gets **302** (active URL) or **404** (missing/inactive), which better matches production-style mix and makes runs reproducible when you document which codes you used.
 
+## Where we run k6
+
+**From here on, we run Bronze (and related) load tests on a VM** so results are not dominated by a low-spec machine. The machine used for the rerun below is a **DigitalOcean droplet: 4 GB RAM, 2 vCPUs**.
+
 ## Results from our run
+
+### Original run (local)
 
 Command:
 
@@ -37,13 +43,28 @@ K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
 k6 run quest-log/scalability-bronze.js
 ```
 
-Seeded codes from MLH `urls.csv`; default `BASE_URL`.
-
 ![k6 terminal results — Scalability Bronze run](../quest-log/screenshots/scalability-bronze.png)
 
 | | |
 |--|--|
 | Peak VUs (`vus_max`) | 50 |
 | Response time — average (`http_req_duration` avg) | ~1591 ms |
-| Response time — **p95** (`http_req_duration`) | ~2495 ms (~2.50 s) |
-| **Error rate** (`http_req_failed`) | 0% |
+| Response time — p95 (`http_req_duration`) | ~2495 ms (~2.50 s) |
+| Error rate (`http_req_failed`) | 0% |
+
+### Rerun (VM — DigitalOcean 4 GB / 2 vCPU)
+
+Command (summary written to repo root as `scalability-bronze.json`):
+
+```bash
+K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG k6 run quest-log/scalability-bronze.js --summary-export quest-log/scalability-bronze.json
+```
+
+![k6 terminal results — Scalability Bronze run (VM)](../quest-log/screenshots/scalability-bronze-new.png)
+
+| | |
+|--|--|
+| Peak VUs (`vus_max`) | 50 |
+| Response time — average (`http_req_duration` avg) | ~673 ms |
+| Response time — p95 (`http_req_duration`) | ~851 ms (~0.85 s) |
+| Error rate (`http_req_failed`) | 0% |
