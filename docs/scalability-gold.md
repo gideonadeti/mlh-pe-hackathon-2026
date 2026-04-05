@@ -167,3 +167,56 @@ The first tsunami run failed mostly at the **edge**: Nginx’s default **512** `
 We **raised `worker_connections` to 4096**, added **Redis** so repeat requests to `GET /<short_code>` could skip Postgres (`X-Cache` MISS then HIT), steered k6 with **`K6_SEEDED_FRACTION=1`** so load exercised that redirect path, and increased **Gunicorn** workers (**2 → 8**) plus **horizontal scale** (**two → four** app containers behind Nginx).
 
 The **fifth** k6 capture stayed at **0%** errors (under the **5%** bar) with **~93 req/s** and **lower** average and **p95** latency than the **two-container, eight-worker** run—matching what we expected after removing the connection ceiling and adding cache and capacity.
+
+## Implementation Details (Gold Hardening)
+
+### 1. Gunicorn Worker Tuning
+- **Location:** `docker/entrypoint.sh`
+- **Logic:** Implemented dynamic worker calculation using `(2 * nproc) + 1` (defaulting to CPUs if `WEB_CONCURRENCY` is not set). This optimizes throughput based on available container resources.
+- **Verification:** `echo "Starting Gunicorn with ${WEB_CONCURRENCY} workers"` added to logs.
+
+### 2. Negative (404) Cache
+- **Location:** `app/__init__.py` and `app/redirect_cache.py`.
+- **Logic:**
+  - Cache misses (non-existent or inactive `short_code`) are now stored in Redis with a special token `__404__` and a **60-second TTL**.
+  - `X-Cache` header is now present on **both** 302 redirects and 404 errors.
+- **Header Behavior:**
+  - `X-Cache: MISS` on the first lookup of a non-existent code.
+  - `X-Cache: HIT` on subsequent lookups while the negative cache is valid.
+
+### 3. Machine-Readable Validation
+- **Location:** `quest-log/scalability-gold.js`
+- **Logic:**
+  - Added `handleSummary` hook to emit `quest-log/scalability-gold.json` automatically on completion.
+  - Added `http_req_duration: ["p(95)<2000"]` threshold to ensure p95 latency stays under 2 seconds.
+  - Summary includes `success` boolean, timestamp, and core metrics.
+
+### Validation Commands
+
+To validate the implementation:
+
+1.  **Rebuild and Restart:**
+    ```bash
+    docker compose up --build -d
+    ```
+
+2.  **Verify Negative Cache:**
+    ```bash
+    # First request: MISS
+    curl -I http://127.0.0.1:8080/absent_code_123
+    # Second request: HIT
+    curl -I http://127.0.0.1:8080/absent_code_123
+    ```
+
+3.  **Run Reproducible Gold Test:**
+    ```bash
+    K6_SEEDED_FRACTION=1 \
+    K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
+    k6 run quest-log/scalability-gold.js
+    ```
+    *Note: This will automatically generate `quest-log/scalability-gold.json`.*
+
+### Success Metrics
+- **Error Rate:** < 5%
+- **p95 Latency:** < 2000ms
+- **Negative Caching:** Observable `X-Cache: HIT` on 404 paths.

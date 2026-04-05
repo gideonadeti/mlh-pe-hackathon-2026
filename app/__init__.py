@@ -43,16 +43,34 @@ def create_app():
 
         cached = get_redirect_target(short_code)
         if cached is not None:
+            if cached == "__404__":
+                return handle_404_response(True)
             response = redirect(cached, code=302)
             response.headers["X-Cache"] = "HIT"
             return response
 
         row = Url.get_or_none(Url.short_code == short_code)
         if row is None or not row.is_active:
-            abort(404)
+            # Cache negative result for 60 seconds
+            set_redirect_target(short_code, "__404__", timeout=60)
+            return handle_404_response(False)
 
         set_redirect_target(short_code, row.original_url)
         response = redirect(row.original_url, code=302)
+        response.headers["X-Cache"] = "MISS"
+        return response
+
+    def handle_404_response(is_hit: bool):
+        response = jsonify(error="Not Found")
+        response.status_code = 404
+        response.headers["X-Cache"] = "HIT" if is_hit else "MISS"
+        return response
+
+    @app.errorhandler(404)
+    def handle_generic_404(e):
+        # Generic 404 (e.g. non-existent routes) also gets the header for consistency
+        response = jsonify(error="Not Found")
+        response.status_code = 404
         response.headers["X-Cache"] = "MISS"
         return response
 
