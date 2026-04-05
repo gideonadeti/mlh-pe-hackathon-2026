@@ -133,7 +133,7 @@ def list_urls():
     return jsonify(items=[url_to_api_dict(u) for u in query])
 
 
-@urls_bp.route("/urls/<int:url_id>", methods=["GET", "PUT"])
+@urls_bp.route("/urls/<int:url_id>", methods=["GET", "PUT", "DELETE"])
 def url_detail(url_id: int):
     if request.method == "GET":
         try:
@@ -141,6 +141,16 @@ def url_detail(url_id: int):
         except Url.DoesNotExist:
             return jsonify(error="url not found"), 404
         return jsonify(url_to_api_dict(url))
+
+    if request.method == "DELETE":
+        try:
+            url = Url.get_by_id(url_id)
+        except Url.DoesNotExist:
+            return jsonify(error="url not found"), 404
+        short_code = url.short_code
+        url.delete_instance()
+        invalidate_redirect(short_code)
+        return "", 204
 
     body = request.get_json(silent=True)
     if body is None or not isinstance(body, dict):
