@@ -7,10 +7,13 @@ x-app-server: &app-server
     DATABASE_USER: postgres
     DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
     FLASK_DEBUG: "false"
+    REDIS_URL: redis://redis:6379
   secrets:
     - postgres_password
   depends_on:
     postgres:
+      condition: service_healthy
+    redis:
       condition: service_healthy
   expose:
     - "8000"
