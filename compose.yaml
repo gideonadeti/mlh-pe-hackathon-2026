@@ -31,6 +31,8 @@ x-app-server: &app-server
 services:
   postgres:
     image: postgres:18
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: hackathon_db
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
