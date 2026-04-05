@@ -27,15 +27,26 @@ uv run python scripts/load_seed_csv.py
 ```
 
 ```bash
+K6_SEEDED_FRACTION=1 \
 K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
 k6 run quest-log/scalability-gold.js
+```
+
+Optional — save the end-of-run summary to JSON (same idea as [scalability-bronze.md](scalability-bronze.md)):
+
+```bash
+K6_SEEDED_FRACTION=1 \
+K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
+k6 run quest-log/scalability-gold.js --summary-export quest-log/scalability-gold.json
 ```
 
 | Env | Default | Notes |
 |-----|---------|--------|
 | `BASE_URL` | `http://127.0.0.1:8080` | Nginx; no trailing slash. |
-| `K6_SHORT_CODES` | *(empty)* | Comma-separated codes; with `K6_SEEDED_FRACTION` — see [scalability-bronze.md](scalability-bronze.md). |
-| `K6_SEEDED_FRACTION` | `0.5` | Share of iterations using listed codes. |
+| `K6_SHORT_CODES` | *(empty)* | Comma-separated codes — see [scalability-bronze.md](scalability-bronze.md). |
+| `K6_SEEDED_FRACTION` | `0.5` in shared script | For Gold we use **`1`** with `K6_SHORT_CODES` set — see below. |
+
+**Why `K6_SEEDED_FRACTION=1`?** With the script default (**0.5**), many iterations use **random** short codes. Those almost always return **404**, and this app **does not cache** 404 responses—so that traffic keeps hitting the **database** and never warms **Redis** for redirects. Gold is meant to show **caching of hot reads**; we therefore set **`K6_SEEDED_FRACTION=1`** so **every** iteration picks from **`K6_SHORT_CODES`** (real seeded URLs). That drives the **302** redirect path where **`X-Cache`** can go **MISS** then **HIT**, and load reflects **shared cache + DB** behavior instead of mostly uncached 404 lookups.
 
 **Caching check:** `curl -sD - -o /dev/null "http://127.0.0.1:8080/<short_code>"` — expect **`X-Cache: MISS`** on the first request for a code, then **`X-Cache: HIT`** on the next (with Redis and Compose as configured).
 
@@ -57,7 +68,9 @@ Under the **500 VU** load, the Nginx container logged repeated **`512 worker_con
 
 ![Nginx logs — worker_connections alerts and k6 traffic](../quest-log/screenshots/scalability-gold-nginx-worker-connections.png)
 
-### First Gold k6 run (500 VUs, 2 minutes)
+### First Gold k6 run
+
+Default **`K6_SEEDED_FRACTION`** (**0.5**); mixed seeded and random short codes.
 
 ```bash
 K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
@@ -72,3 +85,20 @@ k6 run quest-log/scalability-gold.js
 | Response time — average (`http_req_duration` avg) | ~435 ms |
 | Response time — p95 (`http_req_duration`) | ~4531 ms (~4.53 s) |
 | Error rate (`http_req_failed`) | ~92% |
+
+### Second Gold k6 run
+
+```bash
+K6_SEEDED_FRACTION=1 \
+K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
+k6 run quest-log/scalability-gold.js
+```
+
+![k6 terminal — Scalability Gold second run](../quest-log/screenshots/scalability-gold-2.png)
+
+| | |
+|--|--|
+| Peak VUs (`vus_max`) | 500 |
+| Response time — average (`http_req_duration` avg) | ~4906 ms (~4.91 s) |
+| Response time — p95 (`http_req_duration`) | ~6061 ms (~6.06 s) |
+| Error rate (`http_req_failed`) | 0% |
