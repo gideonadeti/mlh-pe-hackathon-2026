@@ -48,6 +48,18 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  redis:
+    image: redis:8
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   server-1:
     <<: *app-server
 
@@ -73,3 +85,4 @@ secrets:
 
 volumes:
   postgres-data:
+  redis-data:
