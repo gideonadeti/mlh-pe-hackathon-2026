@@ -69,6 +69,12 @@ services:
   server-2:
     <<: *app-server
 
+  server-3:
+    <<: *app-server
+
+  server-4:
+    <<: *app-server
+
   nginx:
     image: nginx:1.29.7-alpine
     volumes:
@@ -79,6 +85,10 @@ services:
       server-1:
         condition: service_healthy
       server-2:
+        condition: service_healthy
+      server-3:
+        condition: service_healthy
+      server-4:
         condition: service_healthy
     restart: unless-stopped
 
