@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, redirect
 
-from app.database import init_db
+from app.database import ensure_tables, init_db
 from app.extensions import cache
 from app.redirect_cache import get_redirect_target, set_redirect_target
 from app.routes import register_routes
@@ -30,6 +30,8 @@ def create_app():
     init_db(app)
 
     from app import models  # noqa: F401 - registers models with Peewee
+
+    ensure_tables()
 
     register_routes(app)
 
