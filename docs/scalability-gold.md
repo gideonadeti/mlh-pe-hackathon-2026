@@ -17,7 +17,11 @@ cp secrets/postgres_password.txt.example secrets/postgres_password.txt
 ```
 
 ```bash
+# Foreground (logs) — local debugging
 docker compose up --build
+
+# Detached — on a VM so the stack keeps running after you disconnect SSH
+docker compose up -d --build
 ```
 
 Load the seed CSVs into Postgres so real short codes exist (`.env` pointing at **`127.0.0.1:5432`** with the **same password** as `secrets/postgres_password.txt`):
@@ -42,7 +46,7 @@ k6 run quest-log/scalability-gold.js --summary-export quest-log/scalability-gold
 
 | Env | Default | Notes |
 |-----|---------|--------|
-| `BASE_URL` | `http://127.0.0.1:8080` | Nginx; no trailing slash. |
+| `BASE_URL` | `http://127.0.0.1:8080` | Nginx; no trailing slash. On a droplet, use `http://YOUR_PUBLIC_IP:8080` and open **TCP 8080** in the cloud firewall (see [README](../README.md#local-vs-deployed-digitalocean-vm)). |
 | `K6_SHORT_CODES` | *(empty)* | Comma-separated codes — see [scalability-bronze.md](scalability-bronze.md). |
 | `K6_SEEDED_FRACTION` | `0.5` in shared script | For Gold we use **`1`** with `K6_SHORT_CODES` set — see below. |
 
@@ -53,6 +57,8 @@ k6 run quest-log/scalability-gold.js --summary-export quest-log/scalability-gold
 ## Where we run k6
 
 Same setup as our **Scalability Silver** reruns: **Docker Compose** and **k6** on a **DigitalOcean droplet (4 GB RAM, 2 vCPUs)**.
+
+**Remote droplet:** Run Compose with **`docker compose up -d --build`** on the VM. Hit the API at **`http://<droplet-public-ip>:8080`** from a browser or from k6 on your laptop via `BASE_URL` (Compose publishes Nginx on host port **8080**). Run k6 on the VM with `BASE_URL=http://127.0.0.1:8080` if you prefer.
 
 ## Results from our run
 
