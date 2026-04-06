@@ -38,7 +38,7 @@ k6 run quest-log/scalability-silver.js
 
 | Env | Default | Notes |
 |-----|---------|--------|
-| `BASE_URL` | `http://127.0.0.1:8080` | Nginx; no trailing slash. Against a droplet: `http://YOUR_PUBLIC_IP:8080` with firewall **8080** open ([README](../README.md#local-vs-deployed-digitalocean-vm)). |
+| `BASE_URL` | `https://shurl.kdmarc.xyz` | Nginx over HTTPS; no trailing slash. Open **TCP 80** / **443** on the VM ([README](../README.md#local-vs-deployed-digitalocean-vm)). |
 | `K6_SHORT_CODES` | *(empty)* | Comma-separated codes; when set, `K6_SEEDED_FRACTION` applies — see [scalability-bronze.md](scalability-bronze.md). |
 | `K6_SEEDED_FRACTION` | `0.5` | Share of iterations using listed codes. |
 
@@ -46,7 +46,7 @@ k6 run quest-log/scalability-silver.js
 
 First capture below was on a **low-spec machine**; the rerun was on a **DigitalOcean droplet: 4 GB RAM, 2 vCPUs** (k6 and Docker on that host).
 
-**Remote droplet:** Use **`docker compose up -d --build`** on the server. Test from outside with **`http://<public-ip>:8080`** or set that as `BASE_URL` when running k6 from your laptop.
+**Remote droplet:** Use **`docker compose up -d --build`** on the server. Test from outside with **`https://shurl.kdmarc.xyz`** (set that as `BASE_URL` when running k6 from your laptop).
 
 ## Results from our run
 

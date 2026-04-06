@@ -10,4 +10,4 @@ export const options = {
   },
 };
 
-export default createScalabilityScenario("http://127.0.0.1:8080");
+export default createScalabilityScenario("https://shurl.kdmarc.xyz");

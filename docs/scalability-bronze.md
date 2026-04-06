@@ -38,7 +38,7 @@ k6 run quest-log/scalability-bronze.js
 
 | Env | Default | Notes |
 |-----|---------|--------|
-| `BASE_URL` | `http://127.0.0.1:5000` | No trailing slash. If the API is on a droplet behind Compose + Nginx, use `http://YOUR_PUBLIC_IP:8080` and open port **8080** ([README](../README.md#local-vs-deployed-digitalocean-vm)). |
+| `BASE_URL` | `http://127.0.0.1:5000` | No trailing slash. If the API is behind Compose + Nginx on the VM, use **`https://shurl.kdmarc.xyz`** and open **TCP 80** / **443** ([README](../README.md#local-vs-deployed-digitalocean-vm)). Example: [users](https://shurl.kdmarc.xyz/users?page=1). |
 | `K6_SHORT_CODES` | *(empty)* | Comma-separated codes; when set, `K6_SEEDED_FRACTION` applies. |
 | `K6_SEEDED_FRACTION` | `0.5` | Share of iterations using listed codes (`0` = all random, `1` = only listed). |
 
@@ -48,7 +48,7 @@ k6 run quest-log/scalability-bronze.js
 
 **From here on, we run Bronze (and related) load tests on a VM** so results are not dominated by a low-spec machine. The machine used for the rerun below is a **DigitalOcean droplet: 4 GB RAM, 2 vCPUs**.
 
-**Remote API:** Point `BASE_URL` at the public URL (e.g. `http://<droplet-ip>:8080` for this repo’s Compose Nginx mapping). The VM should run **`docker compose up -d --build`** if you want the stack to stay up after SSH disconnect.
+**Remote API:** Point `BASE_URL` at **`https://shurl.kdmarc.xyz`** (no trailing slash). The VM should run **`docker compose up -d --build`** if you want the stack to stay up after SSH disconnect.
 
 ## Results from our run
 
