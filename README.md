@@ -5,7 +5,7 @@ This repository is my solution / implementation / submission for **MLH PE Hackat
 The MLH PE Hackathon 2026 was built around a compelling challenge: take a URL shortener template and push it to production-grade quality by completing a series of **Production Engineering quests** — covering reliability, scalability, incident response, and documentation. With five non-cash prizes on the line, I set my sights on the **Scalability Quest** and its top prize: a **Raspberry Pi 5 Starter Kit**. The goal wasn't just to build something that *works* — it was to build something that *scales*.
 
 - **Template repo**: [MLH-Fellowship/PE-Hackathon-Template-2026](https://github.com/MLH-Fellowship/PE-Hackathon-Template-2026)
-- **Demo video**: *TODO* (YouTube link placeholder)
+- **Demo video**: [`https://youtu.be/RU5ktCZYP8M`](https://youtu.be/RU5ktCZYP8M)
 
 ## Table of contents
 

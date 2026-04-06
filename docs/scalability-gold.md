@@ -54,13 +54,15 @@ k6 run quest-log/scalability-gold.js --summary-export quest-log/scalability-gold
 
 **Caching check:** `curl -sD - -o /dev/null "https://shurl.kdmarc.xyz/Ti5sD0"` — expect **`X-Cache: MISS`** on the first request for a code, then **`X-Cache: HIT`** on the next (with Redis and Compose as configured). Replace `Ti5sD0` with any seeded short code.
 
-## Where I run k6
+**Caching check:** `curl -sD - -o /dev/null "https://shurl.kdmarc.xyz/Ti5sD0"` — expect **`X-Cache: MISS`** on the first request for a code, then **`X-Cache: HIT`** on the next (with Redis and Compose as configured). Replace `Ti5sD0` with any seeded short code.
 
 Same setup as my **Scalability Silver** reruns: **Docker Compose** and **k6** on a **DigitalOcean droplet (4 GB RAM, 2 vCPUs)**.
 
 **Remote droplet:** Run Compose with **`docker compose up -d --build`** on the VM. Hit the API at **`https://shurl.kdmarc.xyz`** from a browser or from k6 (set `BASE_URL=https://shurl.kdmarc.xyz` whether k6 runs on your laptop or on the VM).
 
-## Results from my run
+**Remote droplet:** Run Compose with **`docker compose up -d --build`** on the VM. Hit the API at **`https://shurl.kdmarc.xyz`** from a browser or from k6 (set `BASE_URL=https://shurl.kdmarc.xyz` whether k6 runs on your laptop or on the VM).
+
+## Results from our run
 
 ### Caching evidence (`X-Cache` headers)
 
