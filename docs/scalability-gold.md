@@ -17,13 +17,17 @@ cp secrets/postgres_password.txt.example secrets/postgres_password.txt
 ```
 
 ```bash
+# Foreground (logs) — local debugging
 docker compose up --build
+
+# Detached — on a VM so the stack keeps running after you disconnect SSH
+docker compose up -d --build
 ```
 
-Load the seed CSVs into Postgres so real short codes exist (`.env` pointing at **`127.0.0.1:5432`** with the **same password** as `secrets/postgres_password.txt`):
+Load the seed CSVs into Postgres so real short codes exist:
 
 ```bash
-uv run python scripts/load_seed_csv.py
+docker compose exec server-1 python scripts/load_seed_csv.py
 ```
 
 ```bash
@@ -42,17 +46,19 @@ k6 run quest-log/scalability-gold.js --summary-export quest-log/scalability-gold
 
 | Env | Default | Notes |
 |-----|---------|--------|
-| `BASE_URL` | `http://127.0.0.1:8080` | Nginx; no trailing slash. |
+| `BASE_URL` | `https://shurl.kdmarc.xyz` | Nginx over HTTPS; no trailing slash. Open **TCP 80** / **443** in the cloud firewall (see [README](../README.md#local-vs-deployed-digitalocean-vm)). |
 | `K6_SHORT_CODES` | *(empty)* | Comma-separated codes — see [scalability-bronze.md](scalability-bronze.md). |
 | `K6_SEEDED_FRACTION` | `0.5` in shared script | For Gold we use **`1`** with `K6_SHORT_CODES` set — see below. |
 
 **Why `K6_SEEDED_FRACTION=1`?** With the script default (**0.5**), many iterations use **random** short codes. Those almost always return **404**, and this app **does not cache** 404 responses—so that traffic keeps hitting the **database** and never warms **Redis** for redirects. Gold is meant to show **caching of hot reads**; we therefore set **`K6_SEEDED_FRACTION=1`** so **every** iteration picks from **`K6_SHORT_CODES`** (real seeded URLs). That drives the **302** redirect path where **`X-Cache`** can go **MISS** then **HIT**, and load reflects **shared cache + DB** behavior instead of mostly uncached 404 lookups.
 
-**Caching check:** `curl -sD - -o /dev/null "http://127.0.0.1:8080/Ti5sD0"` — expect **`X-Cache: MISS`** on the first request for a code, then **`X-Cache: HIT`** on the next (with Redis and Compose as configured). Replace `Ti5sD0` with any seeded short code.
+**Caching check:** `curl -sD - -o /dev/null "https://shurl.kdmarc.xyz/Ti5sD0"` — expect **`X-Cache: MISS`** on the first request for a code, then **`X-Cache: HIT`** on the next (with Redis and Compose as configured). Replace `Ti5sD0` with any seeded short code.
 
 ## Where we run k6
 
 Same setup as our **Scalability Silver** reruns: **Docker Compose** and **k6** on a **DigitalOcean droplet (4 GB RAM, 2 vCPUs)**.
+
+**Remote droplet:** Run Compose with **`docker compose up -d --build`** on the VM. Hit the API at **`https://shurl.kdmarc.xyz`** from a browser or from k6 (set `BASE_URL=https://shurl.kdmarc.xyz` whether k6 runs on your laptop or on the VM).
 
 ## Results from our run
 

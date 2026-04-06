@@ -125,7 +125,7 @@ def create_user():
     return jsonify(user_to_api_dict(user)), 201
 
 
-@users_bp.route("/users/<int:user_id>", methods=["GET", "PUT"])
+@users_bp.route("/users/<int:user_id>", methods=["GET", "PUT", "DELETE"])
 def user_detail(user_id: int):
     if request.method == "GET":
         try:
@@ -133,6 +133,14 @@ def user_detail(user_id: int):
         except User.DoesNotExist:
             return jsonify(error="user not found"), 404
         return jsonify(user_to_api_dict(user))
+
+    if request.method == "DELETE":
+        try:
+            user = User.get_by_id(user_id)
+        except User.DoesNotExist:
+            return jsonify(error="user not found"), 404
+        user.delete_instance()
+        return "", 204
 
     body = request.get_json(silent=True)
     if body is None or not isinstance(body, dict):

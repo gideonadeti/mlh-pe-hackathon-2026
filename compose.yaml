@@ -34,8 +34,6 @@ x-app-server: &app-server
 services:
   postgres:
     image: postgres:18
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: hackathon_db
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
@@ -79,8 +77,10 @@ services:
     image: nginx:1.29.7-alpine
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
     depends_on:
       server-1:
         condition: service_healthy

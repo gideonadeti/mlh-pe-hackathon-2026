@@ -72,6 +72,19 @@ def _parse_query_user_id() -> tuple[int | None, tuple | None]:
     return uid, None
 
 
+def _parse_query_is_active() -> tuple[bool | None, tuple | None]:
+    """Return (is_active filter, error_response). None = no filter."""
+    raw = request.args.get("is_active")
+    if raw is None:
+        return None, None
+    lowered = raw.strip().lower()
+    if lowered in ("true", "1", "yes"):
+        return True, None
+    if lowered in ("false", "0", "no"):
+        return False, None
+    return None, (jsonify(error="is_active must be true or false"), 400)
+
+
 @urls_bp.route("/urls", methods=["GET"])
 def list_urls():
     filter_user_id, err = _parse_query_user_id()
@@ -79,9 +92,16 @@ def list_urls():
         body, status = err
         return body, status
 
+    filter_active, err = _parse_query_is_active()
+    if err is not None:
+        body, status = err
+        return body, status
+
     query = Url.select().order_by(Url.id)
     if filter_user_id is not None:
         query = query.where(Url.user_id == filter_user_id)
+    if filter_active is not None:
+        query = query.where(Url.is_active == filter_active)
 
     args = request.args
     if "page" in args or "per_page" in args:
@@ -101,7 +121,7 @@ def list_urls():
         has_next = total_pages > 0 and page < total_pages
         has_prev = page > 1
         return jsonify(
-            urls=payload,
+            items=payload,
             page=page,
             per_page=per_page,
             total=total,
@@ -110,10 +130,10 @@ def list_urls():
             has_prev=has_prev,
         )
 
-    return jsonify([url_to_api_dict(u) for u in query])
+    return jsonify(items=[url_to_api_dict(u) for u in query])
 
 
-@urls_bp.route("/urls/<int:url_id>", methods=["GET", "PUT"])
+@urls_bp.route("/urls/<int:url_id>", methods=["GET", "PUT", "DELETE"])
 def url_detail(url_id: int):
     if request.method == "GET":
         try:
@@ -121,6 +141,16 @@ def url_detail(url_id: int):
         except Url.DoesNotExist:
             return jsonify(error="url not found"), 404
         return jsonify(url_to_api_dict(url))
+
+    if request.method == "DELETE":
+        try:
+            url = Url.get_by_id(url_id)
+        except Url.DoesNotExist:
+            return jsonify(error="url not found"), 404
+        short_code = url.short_code
+        url.delete_instance()
+        invalidate_redirect(short_code)
+        return "", 204
 
     body = request.get_json(silent=True)
     if body is None or not isinstance(body, dict):
