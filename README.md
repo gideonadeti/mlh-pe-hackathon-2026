@@ -1,192 +1,249 @@
-# MLH PE Hackathon — Flask + Peewee + PostgreSQL Template
+# shurl — MLH PE Hackathon 2026 Submission
 
-A minimal hackathon starter template. You get the scaffolding and database wiring — you build the models, routes, and CSV loading logic.
+This repository is my solution / implementation / submission for **MLH PE Hackathon 2026**.
 
-**Stack:** Flask · Peewee ORM · PostgreSQL · uv
+The MLH PE Hackathon 2026 was built around a compelling challenge: take a URL shortener template and push it to production-grade quality by completing a series of **Production Engineering quests** — covering reliability, scalability, incident response, and documentation. With five non-cash prizes on the line, I set my sights on the **Scalability Quest** and its top prize: a **Raspberry Pi 5 Starter Kit**. The goal wasn't just to build something that *works* — it was to build something that *scales*.
 
-## **Important**
+- **Template repo**: [MLH-Fellowship/PE-Hackathon-Template-2026](https://github.com/MLH-Fellowship/PE-Hackathon-Template-2026)
+- **Demo video**: [`https://youtu.be/RU5ktCZYP8M`](https://youtu.be/RU5ktCZYP8M)
 
-You need to work with around the seed files that you can find in [MLH PE Hackathon](https://mlh-pe-hackathon.com) platform. This will help you build the schema for the database and have some data to do some testing and submit your project for judging. If you need help with this, reach out on Discord or on the Q&A tab on the platform.
+## Table of contents
 
-## Prerequisites
+- [Features](#features)
+- [Technologies](#technologies)
+- [Using the live app](#using-the-live-app)
+- [Run locally](#run-locally)
+  - [Option A: Flask only (Bronze)](#option-a-flask-only-bronze)
+  - [Option B: Full stack with Docker Compose (Silver/Gold)](#option-b-full-stack-with-docker-compose-silvergold)
+  - [Seed data (optional)](#seed-data-optional)
+- [Quest focus: Scalability](#quest-focus-scalability)
+- [Contributing](#contributing)
+- [Support](#support)
+- [Acknowledgements](#acknowledgements)
 
-- **uv** — a fast Python package manager that handles Python versions, virtual environments, and dependencies automatically.
-  Install it with:
-  ```bash
-  # macOS / Linux
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+## Features
 
-  # Windows (PowerShell)
-  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-  ```
-  For other methods see the [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/).
-- PostgreSQL running locally (you can use Docker or a local instance)
+- **Live production deployment** on a real domain: `https://shurl.kdmarc.xyz` (TLS via Nginx)
+- **Health check endpoint**: `GET /health` → `{"status":"ok"}`
+- **URL shortener core flow**:
+  - **Create short links**: `POST /urls` generates a unique 6‑char `short_code`
+  - **Redirect**: `GET /<short_code>` returns **302** (or **404** if missing/inactive)
+- **API-first CRUD** (JSON):
+  - **Users**: `GET/POST /users`, `GET/PUT/DELETE /users/<id>` with pagination
+  - **URLs**: `GET/POST /urls`, `GET/PUT/DELETE /urls/<id>` with pagination + filters (`user_id`, `is_active`)
+  - **Events**: `GET/POST /events` for recording and listing event data (paginated)
+- **Bulk user import**: `POST /users/bulk` accepts a multipart CSV upload (same format as hackathon seed files)
+- **Redirect caching with observability**:
+  - Redis-backed redirect cache (when `REDIS_URL` is set)
+  - `X-Cache: HIT|MISS` header on redirects
+  - Cache invalidation on URL updates/deletes
+- **Scale-ready container layout**: multiple app containers behind an Nginx upstream (see `compose.yaml` + scalability docs)
 
-## uv Basics
+## Technologies
 
-`uv` manages your Python version, virtual environment, and dependencies automatically — no manual `python -m venv` needed.
+- **API**: Flask
+- **Database**: PostgreSQL (Peewee ORM)
+- **Cache**: Redis
+- **Edge / routing**: Nginx
+- **Load testing**: k6
+- **Python deps**: `uv`
+- **Containers**: Docker + Compose
 
-| Command | What it does |
-|---------|--------------|
-| `uv sync` | Install all dependencies (creates `.venv` automatically) |
-| `uv run <script>` | Run a script using the project's virtual environment |
-| `uv add <package>` | Add a new dependency |
-| `uv remove <package>` | Remove a dependency |
+## Using the live app
 
-## Quick Start
+This is a real running instance while it’s hosted: you can use it to shorten URLs.
+
+- **Base URL**: `https://shurl.kdmarc.xyz`
+- **Example endpoint**: `GET /users?page=1` → [`https://shurl.kdmarc.xyz/users?page=1`](https://shurl.kdmarc.xyz/users?page=1)
+
+**How it works (high level):**
+
+- **No authentication**: create a user via the `users` endpoint.
+- **Shorten a URL**: use the `urls` endpoint to create a short code for a long URL.
+- **Redirect**: visit `https://shurl.kdmarc.xyz/<short_code>` and the server returns a redirect.
+
+**Request payloads (examples):**
+
+- **Create a user** (`POST /users`)
 
 ```bash
-# 1. Clone the repo
-git clone <repo-url> && cd mlh-pe-hackathon
+curl -sS -X POST "https://shurl.kdmarc.xyz/users" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "yourname",
+    "email": "you@example.com"
+  }'
+```
 
-# 2. Install dependencies
-uv sync
+Example response:
 
-# 3. Create the database
-createdb hackathon_db
+```json
+{
+  "created_at": "2026-04-06T15:40:01",
+  "email": "you@example.com",
+  "id": 1,
+  "username": "yourname"
+}
+```
 
-# 4. Configure environment
-cp .env.example .env   # edit if your DB credentials differ
+- **Create a short URL** (`POST /urls`)
 
-# 5. Run the server
+```bash
+curl -sS -X POST "https://shurl.kdmarc.xyz/urls" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": 1,
+    "original_url": "https://example.com/some/very/long/url",
+    "title": "Example link"
+  }'
+```
+
+Example response:
+
+```json
+{
+  "created_at": "2026-04-06T15:40:10",
+  "id": 1,
+  "is_active": true,
+  "original_url": "https://example.com/some/very/long/url",
+  "short_code": "Ti5sD0",
+  "title": "Example link",
+  "updated_at": "2026-04-06T15:40:10",
+  "user_id": 1
+}
+```
+
+- **Use the short code** (`GET /<short_code>`)
+
+```bash
+curl -sS -D - -o /dev/null "https://shurl.kdmarc.xyz/Ti5sD0"
+```
+
+Example response (headers):
+
+```text
+HTTP/2 302
+location: https://example.com/some/very/long/url
+x-cache: HIT
+```
+
+- **List URLs (paginated + filters)** (`GET /urls?page=1&per_page=20&user_id=1&is_active=true`)
+
+```bash
+curl -sS "https://shurl.kdmarc.xyz/urls?page=1&per_page=20&user_id=1&is_active=true"
+```
+
+Example response:
+
+```json
+{
+  "has_next": false,
+  "has_prev": false,
+  "items": [
+    {
+      "created_at": "2026-04-06T15:40:10",
+      "id": 1,
+      "is_active": true,
+      "original_url": "https://example.com/some/very/long/url",
+      "short_code": "Ti5sD0",
+      "title": "Example link",
+      "updated_at": "2026-04-06T15:40:10",
+      "user_id": 1
+    }
+  ],
+  "page": 1,
+  "per_page": 20,
+  "total": 1,
+  "total_pages": 1
+}
+```
+
+## Run locally
+
+### Option A: Flask only (Bronze)
+
+Prereqs:
+
+- `uv` installed (see [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/))
+- A local Postgres you can connect to (or use Docker Compose below)
+
+From repo root:
+
+```bash
+cp .env.example .env
 uv run run.py
-
-# 6. Verify
-curl http://localhost:5000/health
-# → {"status":"ok"}
 ```
 
-## Project Structure
+Verify:
 
-```
-mlh-pe-hackathon/
-├── app/
-│   ├── __init__.py          # App factory (create_app)
-│   ├── database.py          # DatabaseProxy, BaseModel, connection hooks
-│   ├── models/
-│   │   └── __init__.py      # Import your models here
-│   └── routes/
-│       └── __init__.py      # register_routes() — add blueprints here
-├── .env.example             # DB connection template
-├── .gitignore               # Python + uv gitignore
-├── .python-version          # Pin Python version for uv
-├── pyproject.toml           # Project metadata + dependencies
-├── run.py                   # Entry point: uv run run.py
-└── README.md
+```bash
+curl http://127.0.0.1:5000/health
 ```
 
-## How to Add a Model
+### Option B: Full stack with Docker Compose (Silver/Gold)
 
-1. Create a file in `app/models/`, e.g. `app/models/product.py`:
+This runs **Nginx (80/443)** + multiple app containers + Postgres + Redis.
 
-```python
-from peewee import CharField, DecimalField, IntegerField
+Note: this Compose setup is designed for a deployed VM with TLS certs at `/etc/letsencrypt` for `shurl.kdmarc.xyz`. For local development, **Option A** is the simplest path.
 
-from app.database import BaseModel
+From repo root:
 
+```bash
+cp secrets/postgres_password.txt.example secrets/postgres_password.txt
 
-class Product(BaseModel):
-    name = CharField()
-    category = CharField()
-    price = DecimalField(decimal_places=2)
-    stock = IntegerField()
+# Foreground (logs)
+docker compose up --build
+
+# Or detached (common on a VM)
+# docker compose up -d --build
 ```
 
-2. Import it in `app/models/__init__.py`:
+Verify (local):
 
-```python
-from app.models.product import Product
+```bash
+docker compose exec server-1 python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"
 ```
 
-3. Create the table (run once in a Python shell or a setup script):
+### Seed data (optional)
 
-```python
-from app.database import db
-from app.models.product import Product
+If you have the hackathon seed files (place them in `data/`), you can load them into Postgres.
 
-db.create_tables([Product])
+Requires:
+
+- `data/users.csv`
+- `data/urls.csv`
+- `data/events.csv`
+
+With Compose running:
+
+```bash
+docker compose exec server-1 python scripts/load_seed_csv.py
 ```
 
-## How to Add Routes
+## Quest focus: Scalability
 
-1. Create a blueprint in `app/routes/`, e.g. `app/routes/products.py`:
+The repo includes write-ups and commands for the Scalability quest tiers:
 
-```python
-from flask import Blueprint, jsonify
-from playhouse.shortcuts import model_to_dict
+- **Bronze**: [`docs/scalability-bronze.md`](docs/scalability-bronze.md)
+- **Silver**: [`docs/scalability-silver.md`](docs/scalability-silver.md)
+- **Gold**: [`docs/scalability-gold.md`](docs/scalability-gold.md)
 
-from app.models.product import Product
+## Contributing
 
-products_bp = Blueprint("products", __name__)
+Issues and pull requests are welcome.
 
+- **Bug reports**: include repro steps, expected vs actual behavior, and any relevant logs.
+- **Feature ideas**: describe the use case first (the “why”), then propose a minimal solution.
+- **Code changes**: keep PRs small and focused; update docs when behavior changes.
 
-@products_bp.route("/products")
-def list_products():
-    products = Product.select()
-    return jsonify([model_to_dict(p) for p in products])
-```
+## Support
 
-2. Register it in `app/routes/__init__.py`:
+If you find this project helpful or interesting, consider supporting me:
 
-```python
-def register_routes(app):
-    from app.routes.products import products_bp
-    app.register_blueprint(products_bp)
-```
+[☕ Buy me a coffee](https://buymeacoffee.com/gideonadeti)
 
-## How to Load CSV Data
+## Acknowledgements
 
-```python
-import csv
-from peewee import chunked
-from app.database import db
-from app.models.product import Product
-
-def load_csv(filepath):
-    with open(filepath, newline="") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
-
-    with db.atomic():
-        for batch in chunked(rows, 100):
-            Product.insert_many(batch).execute()
-```
-
-## Useful Peewee Patterns
-
-```python
-from peewee import fn
-from playhouse.shortcuts import model_to_dict
-
-# Select all
-products = Product.select()
-
-# Filter
-cheap = Product.select().where(Product.price < 10)
-
-# Get by ID
-p = Product.get_by_id(1)
-
-# Create
-Product.create(name="Widget", category="Tools", price=9.99, stock=50)
-
-# Convert to dict (great for JSON responses)
-model_to_dict(p)
-
-# Aggregations
-avg_price = Product.select(fn.AVG(Product.price)).scalar()
-total = Product.select(fn.SUM(Product.stock)).scalar()
-
-# Group by
-from peewee import fn
-query = (Product
-         .select(Product.category, fn.COUNT(Product.id).alias("count"))
-         .group_by(Product.category))
-```
-
-## Tips
-
-- Use `model_to_dict` from `playhouse.shortcuts` to convert model instances to dictionaries for JSON responses.
-- Wrap bulk inserts in `db.atomic()` for transactional safety and performance.
-- The template uses `teardown_appcontext` for connection cleanup, so connections are closed even when requests fail.
-- Check `.env.example` for all available configuration options.
+- **MLH PE Hackathon 2026** for the challenge and Production Engineering quests.
+- The original template: [MLH-Fellowship/PE-Hackathon-Template-2026](https://github.com/MLH-Fellowship/PE-Hackathon-Template-2026)
+- Open-source tooling that made this build possible: Flask, Peewee, Postgres, Redis, Nginx, Docker, k6, and `uv`.
