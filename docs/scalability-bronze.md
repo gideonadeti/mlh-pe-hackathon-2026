@@ -11,12 +11,25 @@ Simulate **50 virtual users** for **2 minutes** hitting `GET /<short_code>`. Red
 From the **repository root**:
 
 ```bash
-# Terminal 1 — API
-uv run run.py
+# Optional (recommended): run the full stack (Nginx, multiple app containers, Postgres, Redis)
+cp secrets/postgres_password.txt.example secrets/postgres_password.txt
+
+# Foreground (logs) — local debugging
+docker compose up --build
+
+# Detached — on a VM so the stack keeps running after you disconnect SSH
+# docker compose up -d --build
 ```
 
 ```bash
-# Terminal 2
+# Optional (recommended): seed Postgres so k6 can hit a mix of 302 + 404
+# Requires data/users.csv, data/urls.csv, data/events.csv (from the hackathon platform).
+docker compose exec server-1 uv run python scripts/load_seed_csv.py
+```
+
+```bash
+# Run the k6 test (include seeded short codes for reproducible mixed results)
+K6_SHORT_CODES=Ti5sD0,P0lQnU,rZUmDs,5O6NbK,mFx4va,jy01rk,keNqfg,hrTXFG \
 k6 run quest-log/scalability-bronze.js
 ```
 

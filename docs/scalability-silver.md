@@ -23,10 +23,10 @@ docker compose up --build
 docker compose up -d --build
 ```
 
-**Note:** Load the seed CSVs into Postgres so real short codes exist and k6 can see a mix of **302** and **404** (same setup used for the runs below). With Compose up, use a `.env` that points at Postgres on **`127.0.0.1:5432`** with the **same password** as `secrets/postgres_password.txt`, then:
+**Note:** Load the seed CSVs into Postgres so real short codes exist and k6 can see a mix of **302** and **404** (same setup used for the runs below). With Compose up:
 
 ```bash
-uv run python scripts/load_seed_csv.py
+docker compose exec server-1 uv run python scripts/load_seed_csv.py
 ```
 
 Requires `data/users.csv`, `data/urls.csv`, and `data/events.csv` (from the hackathon platform).

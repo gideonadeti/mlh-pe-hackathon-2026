@@ -24,10 +24,10 @@ docker compose up --build
 docker compose up -d --build
 ```
 
-Load the seed CSVs into Postgres so real short codes exist (`.env` pointing at **`127.0.0.1:5432`** with the **same password** as `secrets/postgres_password.txt`):
+Load the seed CSVs into Postgres so real short codes exist:
 
 ```bash
-uv run python scripts/load_seed_csv.py
+docker compose exec server-1 uv run python scripts/load_seed_csv.py
 ```
 
 ```bash
