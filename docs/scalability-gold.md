@@ -27,7 +27,7 @@ docker compose up -d --build
 Load the seed CSVs into Postgres so real short codes exist:
 
 ```bash
-docker compose exec server-1 uv run python scripts/load_seed_csv.py
+docker compose exec server-1 python scripts/load_seed_csv.py
 ```
 
 ```bash

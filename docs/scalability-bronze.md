@@ -24,7 +24,10 @@ docker compose up --build
 ```bash
 # Optional (recommended): seed Postgres so k6 can hit a mix of 302 + 404
 # Requires data/users.csv, data/urls.csv, data/events.csv (from the hackathon platform).
-docker compose exec server-1 uv run python scripts/load_seed_csv.py
+#
+# Note: the app container includes a virtualenv at /app/.venv (PATH is set accordingly),
+# but it does not include the `uv` CLI binary — use `python` directly.
+docker compose exec server-1 python scripts/load_seed_csv.py
 ```
 
 ```bash
